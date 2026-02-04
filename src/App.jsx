@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { useEffect } from 'react'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
@@ -10,6 +11,11 @@ import ProtectedRoute from './components/ProtectedRoute'
 import AdminLayout from './layouts/AdminLayout'
 
 function App() {
+  // useEffect(() => {
+  //   navigator.geolocation.getCurrentPosition((position) => {
+  //     console.log(position)
+  //   })
+  // }, [])
   return (
     <BrowserRouter>
       <Routes>

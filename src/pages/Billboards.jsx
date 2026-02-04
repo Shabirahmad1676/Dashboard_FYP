@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from 'react'
-import { MapPin, Eye, Trash2, Search, Plus, Upload, X, Loader2, Locate } from 'lucide-react'
+import { MapPin, Eye, Trash2, Search, Plus, Upload, X, Loader2, Locate, Pencil } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 export default function Billboards() {
@@ -17,9 +17,13 @@ export default function Billboards() {
         category: 'Retail',
         city: 'Mardan',
         latitude: '',
-        longitude: ''
+        longitude: '',
+        full_description: '',
+        contact: '',
+        features: ''
     })
     const [imageFile, setImageFile] = useState(null)
+    const [editingId, setEditingId] = useState(null)
 
     useEffect(() => {
         fetchBillboards()
@@ -65,61 +69,112 @@ export default function Billboards() {
 
     const handleCreate = async (e) => {
         e.preventDefault()
-        if (!imageFile) return alert('Please select an ad image')
+        // If editing, image is optional. If creating, image is required.
+        if (!editingId && !imageFile) return alert('Please select an ad image')
 
         try {
             setUploading(true)
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error('You must be logged in')
 
-            // 1. Upload Image
-            const fileExt = imageFile.name.split('.').pop()
-            const fileName = `${Math.random()}.${fileExt}`
-            const filePath = `${fileName}`
+            let publicUrl = null
 
-            const { error: uploadError } = await supabase.storage
-                .from('billboards')
-                .upload(filePath, imageFile)
+            // 1. Upload Image (only if a new file is selected)
+            if (imageFile) {
+                const fileExt = imageFile.name.split('.').pop()
+                const fileName = `${Math.random()}.${fileExt}`
+                const filePath = `${fileName}`
 
-            if (uploadError) throw uploadError
+                const { error: uploadError } = await supabase.storage
+                    .from('billboards')
+                    .upload(filePath, imageFile)
 
-            // 2. Get Public URL
-            const { data: { publicUrl } } = supabase.storage
-                .from('billboards')
-                .getPublicUrl(filePath)
+                if (uploadError) throw uploadError
 
-            // 3. Insert Record
-            const { data, error: insertError } = await supabase
-                .from('billboards')
-                .insert([{
-                    marker_id: `marker-${Date.now()}-${Math.floor(Math.random() * 1000)}`, // Auto-generate unique marker_id
-                    title: form.title,
-                    business: form.business,
-                    category: form.category,
-                    city: form.city,
-                    latitude: form.latitude ? parseFloat(form.latitude) : null,
-                    longitude: form.longitude ? parseFloat(form.longitude) : null,
-                    image_url: publicUrl,
-                    is_active: true,
-                    views: 0,
-                    owner_id: user.id // Assign ownership
-                }])
-                .select()
+                const { data: urlData } = supabase.storage
+                    .from('billboards')
+                    .getPublicUrl(filePath)
+                publicUrl = urlData.publicUrl
+            }
 
-            if (insertError) throw insertError
+            // Prepare Payload
+            const payload = {
+                title: form.title,
+                business: form.business,
+                category: form.category,
+                city: form.city,
+                latitude: form.latitude ? parseFloat(form.latitude) : null,
+                longitude: form.longitude ? parseFloat(form.longitude) : null,
+                full_description: form.full_description,
+                contact: form.contact,
+                features: form.features ? form.features.split(',').map(f => f.trim()).filter(f => f) : [],
+                // Only update image if a new one was uploaded
+                ...(publicUrl && { image_url: publicUrl }),
+            }
 
-            setBillboards([data[0], ...billboards])
+            if (editingId) {
+                // UPDATE Existing
+                const { data, error } = await supabase
+                    .from('billboards')
+                    .update(payload)
+                    .eq('id', editingId)
+                    .select()
+
+                if (error) throw error
+
+                setBillboards(billboards.map(b => b.id === editingId ? data[0] : b))
+                alert('Billboard updated successfully!')
+            } else {
+                // INSERT New
+                const { data, error } = await supabase
+                    .from('billboards')
+                    .insert([{
+                        ...payload,
+                        // Defaults for new records
+                        marker_id: `marker-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                        is_active: true,
+                        views: 0,
+                        owner_id: user.id
+                    }])
+                    .select()
+
+                if (error) throw error
+
+                setBillboards([data[0], ...billboards])
+                alert('Billboard created successfully!')
+            }
+
             setShowModal(false)
-            setForm({ title: '', business: '', category: 'Retail', city: 'Mardan', latitude: '', longitude: '' })
-            setImageFile(null)
-            alert('Billboard created successfully!')
+            resetForm()
 
         } catch (error) {
-            console.error('Error creating billboard:', error.message)
-            alert('Failed to create billboard: ' + error.message)
+            console.error('Error saving billboard:', error.message)
+            alert('Failed to save billboard: ' + error.message)
         } finally {
             setUploading(false)
         }
+    }
+
+    const resetForm = () => {
+        setForm({ title: '', business: '', category: 'Retail', city: 'Mardan', latitude: '', longitude: '', full_description: '', contact: '', features: '' })
+        setImageFile(null)
+        setEditingId(null)
+    }
+
+    const handleEdit = (billboard) => {
+        setEditingId(billboard.id)
+        setForm({
+            title: billboard.title || '',
+            business: billboard.business || '',
+            category: billboard.category || 'Retail',
+            city: billboard.city || '',
+            latitude: billboard.latitude || '',
+            longitude: billboard.longitude || '',
+            full_description: billboard.full_description || '',
+            contact: billboard.contact || '',
+            features: Array.isArray(billboard.features) ? billboard.features.join(', ') : (billboard.features || '')
+        })
+        setShowModal(true)
     }
 
     const handleDelete = async (id) => {
@@ -140,7 +195,7 @@ export default function Billboards() {
                     <h1 style={{ textShadow: '0 0 20px rgba(6, 182, 212, 0.3)' }}>My Ads</h1>
                     <p className="text-muted">Manage your AR campaigns</p>
                 </div>
-                <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+                <button className="btn btn-primary" onClick={() => { resetForm(); setShowModal(true); }}>
                     <Plus size={20} />
                     Create New Ad
                 </button>
@@ -215,6 +270,9 @@ export default function Billboards() {
                                         </span>
                                     </td>
                                     <td style={{ padding: '1rem', textAlign: 'right' }}>
+                                        <button className="btn" style={{ color: 'var(--primary)', padding: '0.5rem', marginRight: '0.5rem' }} onClick={() => handleEdit(item)}>
+                                            <Pencil size={18} />
+                                        </button>
                                         <button className="btn" style={{ color: 'var(--danger)', padding: '0.5rem' }} onClick={() => handleDelete(item.id)}>
                                             <Trash2 size={18} />
                                         </button>
@@ -231,7 +289,7 @@ export default function Billboards() {
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 50, overflowY: 'auto' }} className="flex-center">
                     <div className="card" style={{ width: '100%', maxWidth: '500px', background: '#1e293b', margin: '2rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                            <h3>Create New Ad</h3>
+                            <h3>{editingId ? 'Edit Ad' : 'Create New Ad'}</h3>
                             <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text)' }}><X /></button>
                         </div>
 
@@ -272,6 +330,29 @@ export default function Billboards() {
                                 </div>
                             </div>
 
+                            <div>
+                                <label className="text-sm text-muted">Description (App Detail view)</label>
+                                <textarea
+                                    value={form.full_description}
+                                    onChange={e => setForm({ ...form, full_description: e.target.value })}
+                                    placeholder="Describe your offer, product details, etc."
+                                    style={{ width: '100%', minHeight: '80px', padding: '0.5rem', borderRadius: '8px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                                />
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div>
+                                    <label className="text-sm text-muted">Contact Number</label>
+                                    <input value={form.contact} onChange={e => setForm({ ...form, contact: e.target.value })} placeholder="0312-3456789" />
+                                </div>
+                                <div>
+                                    <label className="text-sm text-muted">Features (comma separated)</label>
+                                    <input value={form.features} onChange={e => setForm({ ...form, features: e.target.value })} placeholder="WiFi, AC, Parking" />
+                                </div>
+                            </div>
+
+                            {/* Lat/Long Inputs */}
+
                             <button type="button" className="btn" style={{ background: 'rgba(255,255,255,0.05)', width: '100%' }} onClick={handleGetLocation}>
                                 <Locate size={18} />
                                 Get My Current Location
@@ -290,7 +371,7 @@ export default function Billboards() {
                             </div>
 
                             <button type="submit" className="btn btn-primary" disabled={uploading} style={{ justifyContent: 'center' }}>
-                                {uploading ? <Loader2 className="animate-spin" /> : 'Launch Campaign'}
+                                {uploading ? <Loader2 className="animate-spin" /> : (editingId ? 'Update Campaign' : 'Launch Campaign')}
                             </button>
                         </form>
                     </div>
