@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react'
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
-import { Eye, TrendingUp, Activity, Bookmark, Zap, Info, Wallet } from 'lucide-react'
+import { Eye, TrendingUp, Activity, Bookmark, Zap, Info, Wallet, Loader2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 export default function Dashboard() {
@@ -135,103 +135,112 @@ export default function Dashboard() {
                 <p className="text-muted">Real-time AR performance metrics</p>
             </header>
 
-            {/* KPI Cards: The Funnel */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-                <StatCard
-                    title="Total Views"
-                    value={metrics.totalViews.toLocaleString()}
-                    icon={<Eye size={24} color="var(--accent)" />}
-                    trend="Funnel Top"
-                    tooltip="User scans the AR billboard."
-                />
-                <StatCard
-                    title="Claims (Wallet)"
-                    value={metrics.totalClaims.toLocaleString()}
-                    icon={<Wallet size={24} color="var(--primary)" />}
-                    trend="Funnel Middle"
-                    tooltip="User saved the coupon to their wallet (Intent to Buy)."
-                />
-                <StatCard
-                    title="Redemptions (Store)"
-                    value={metrics.totalRedemptions.toLocaleString()}
-                    icon={<Zap size={24} color="var(--warning)" />}
-                    trend="Funnel Bottom"
-                    tooltip="User visited the store and used the coupon (Actual Sale)."
-                />
-                <StatCard
-                    title="Campaign ROI"
-                    value={`${metrics.conversionRate}%`}
-                    icon={<TrendingUp size={24} color="var(--success)" />}
-                    trend="Global Conversion"
-                    tooltip="Percentage of Views that turned into actual Store Redemptions."
-                />
-            </div>
-
-            {/* Charts */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))', gap: '1.5rem' }}>
-
-                {/* Line Chart: Full Funnel Engagement */}
-                <div className="card" style={{ height: '400px', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                        <h3>Engagement Funnel</h3>
-                        <Activity size={20} className="text-muted" />
-                    </div>
-
-                    <div style={{ flex: 1, minHeight: 0 }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={engagementData}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} stroke="var(--text-muted)" />
-                                <YAxis axisLine={false} tickLine={false} stroke="var(--text-muted)" />
-                                <Tooltip
-                                    contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '8px' }}
-                                    itemStyle={{ color: 'var(--text)' }}
-                                />
-                                <Legend />
-                                <Line type="monotone" dataKey="views" stroke="var(--text-muted)" strokeWidth={2} dot={{ r: 2 }} name="Views" />
-                                <Line type="monotone" dataKey="claims" stroke="var(--primary)" strokeWidth={3} dot={{ r: 4 }} name="Claims" />
-                                <Line type="monotone" dataKey="redemptions" stroke="var(--success)" strokeWidth={3} dot={{ r: 4 }} name="Sales" />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
-
-                    <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(139, 92, 246, 0.1)', borderRadius: '8px', borderLeft: '3px solid var(--primary)', fontSize: '0.875rem' }}>
-                        <span className="text-muted">✨ Insight: </span>
-                        <span style={{ color: 'var(--text)', fontWeight: 500 }}>
-                            {insightText || "Gathering funnel data..."}
-                        </span>
-                    </div>
+            {loading ? (
+                <div className="flex-center" style={{ height: '400px', flexDirection: 'column', gap: '1rem' }}>
+                    <Loader2 className="animate-spin" size={40} color="var(--primary)" />
+                    <p className="text-muted">Analyzing your ad performance...</p>
                 </div>
-
-                {/* Pie Chart: Interests */}
-                <div className="card" style={{ height: '400px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                        <h3>Audience Interests</h3>
-                        <div className="text-muted text-sm">Personalization Filter</div>
+            ) : (
+                <>
+                    {/* KPI Cards: The Funnel */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+                        <StatCard
+                            title="Total Views"
+                            value={metrics.totalViews.toLocaleString()}
+                            icon={<Eye size={24} color="var(--accent)" />}
+                            trend="Funnel Top"
+                            tooltip="User scans the AR billboard."
+                        />
+                        <StatCard
+                            title="Claims (Wallet)"
+                            value={metrics.totalClaims.toLocaleString()}
+                            icon={<Wallet size={24} color="var(--primary)" />}
+                            trend="Funnel Middle"
+                            tooltip="User saved the coupon to their wallet (Intent to Buy)."
+                        />
+                        <StatCard
+                            title="Redemptions (Store)"
+                            value={metrics.totalRedemptions.toLocaleString()}
+                            icon={<Zap size={24} color="var(--warning)" />}
+                            trend="Funnel Bottom"
+                            tooltip="User visited the store and used the coupon (Actual Sale)."
+                        />
+                        <StatCard
+                            title="Campaign ROI"
+                            value={`${metrics.conversionRate}%`}
+                            icon={<TrendingUp size={24} color="var(--success)" />}
+                            trend="Global Conversion"
+                            tooltip="Percentage of Views that turned into actual Store Redemptions."
+                        />
                     </div>
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Pie
-                                data={interestData}
-                                cx="50%"
-                                cy="50%"
-                                innerRadius={80}
-                                outerRadius={100}
-                                paddingAngle={5}
-                                dataKey="value"
-                                stroke="none"
-                            >
-                                {interestData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                ))}
-                            </Pie>
-                            <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '8px' }} />
-                            <Legend verticalAlign="middle" align="right" layout="vertical" />
-                        </PieChart>
-                    </ResponsiveContainer>
-                </div>
 
-            </div>
+                    {/* Charts */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))', gap: '1.5rem' }}>
+
+                        {/* Line Chart: Full Funnel Engagement */}
+                        <div className="card" style={{ height: '400px', display: 'flex', flexDirection: 'column' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                                <h3>Engagement Funnel</h3>
+                                <Activity size={20} className="text-muted" />
+                            </div>
+
+                            <div style={{ flex: 1, minHeight: 0 }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={engagementData}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.1)" />
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} stroke="var(--text-muted)" />
+                                        <YAxis axisLine={false} tickLine={false} stroke="var(--text-muted)" />
+                                        <Tooltip
+                                            contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                                            itemStyle={{ color: 'var(--text)' }}
+                                        />
+                                        <Legend />
+                                        <Line type="monotone" dataKey="views" stroke="var(--text-muted)" strokeWidth={2} dot={{ r: 2 }} name="Views" />
+                                        <Line type="monotone" dataKey="claims" stroke="var(--primary)" strokeWidth={3} dot={{ r: 4 }} name="Claims" />
+                                        <Line type="monotone" dataKey="redemptions" stroke="var(--success)" strokeWidth={3} dot={{ r: 4 }} name="Sales" />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+
+                            <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(139, 92, 246, 0.1)', borderRadius: '8px', borderLeft: '3px solid var(--primary)', fontSize: '0.875rem' }}>
+                                <span className="text-muted">✨ Insight: </span>
+                                <span style={{ color: 'var(--text)', fontWeight: 500 }}>
+                                    {insightText || "Gathering funnel data..."}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Pie Chart: Interests */}
+                        <div className="card" style={{ height: '400px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                                <h3>Audience Interests</h3>
+                                <div className="text-muted text-sm">Personalization Filter</div>
+                            </div>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={interestData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={80}
+                                        outerRadius={100}
+                                        paddingAngle={5}
+                                        dataKey="value"
+                                        stroke="none"
+                                    >
+                                        {interestData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '8px' }} />
+                                    <Legend verticalAlign="middle" align="right" layout="vertical" />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+
+                    </div>
+                </>
+            )}
         </div>
     )
 }
