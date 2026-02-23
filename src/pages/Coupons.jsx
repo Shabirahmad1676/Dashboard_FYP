@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from 'react'
-import { Plus, Trash2, Edit, X, MapPin } from 'lucide-react'
+import { Plus, Trash2, Edit, X, MapPin, Loader2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 export default function Coupons() {
@@ -109,7 +109,10 @@ export default function Coupons() {
             </header>
 
             {loading ? (
-                <p>Loading...</p>
+                <div className="flex-center" style={{ height: '200px', flexDirection: 'column', gap: '1rem' }}>
+                    <Loader2 className="animate-spin" size={32} color="var(--primary)" />
+                    <p className="text-muted">Fetching your coupons...</p>
+                </div>
             ) : (
                 <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
